@@ -1,0 +1,6 @@
+{
+  "name": "HOGACOR Suite - Gestión de Obras y Administración",
+  "description": "Plataforma integral de gestión de obras, panel de administración con control de roles y permisos, dashboards personalizables, reportes en PDF/Excel y notificaciones en tiempo real.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
