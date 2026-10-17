@@ -20,11 +20,14 @@ import {
   ShieldAlert, 
   FileText,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Calculator,
+  Database
 } from 'lucide-react';
 import { Project, ActivityLog, WidgetConfig, SystemNotification, User } from '../types';
 import { calculateProjectStats, formatCurrency, formatCompactNumber } from '../utils/storage';
 import { DEFAULT_WIDGET_CONFIGS } from '../utils/mockData';
+import { CALCULATORS_LIST } from './CalculatorsView';
 
 interface DashboardProps {
   currentUser: User;
@@ -35,6 +38,7 @@ interface DashboardProps {
   onUpdateWidgetConfigs: (configs: WidgetConfig[]) => void;
   onNavigateTo: (module: string, projectId?: string) => void;
   onSimulateEvent: () => void;
+  onOpenBackupModal?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -46,6 +50,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onUpdateWidgetConfigs,
   onNavigateTo,
   onSimulateEvent,
+  onOpenBackupModal,
 }) => {
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [localConfigs, setLocalConfigs] = useState<WidgetConfig[]>(widgetConfigs);
@@ -142,7 +147,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {onOpenBackupModal && (
+            <button
+              onClick={onOpenBackupModal}
+              className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-red-800 bg-red-50 hover:bg-red-100 rounded-xl transition-all border border-red-200 shadow-sm hover:scale-[1.02]"
+              title="Copia de Seguridad y Respaldo de Datos (Backup JSON)"
+            >
+              <Database className="w-3.5 h-3.5 text-red-700" />
+              Backup Data (.JSON)
+            </button>
+          )}
+
           <button
             onClick={() => setIsCustomizing(true)}
             className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all border border-slate-200 shadow-sm"
@@ -151,6 +167,123 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Sliders className="w-3.5 h-3.5 text-teal-600" />
             Personalizar Widgets ({sortedVisibleWidgets.length}/{widgetConfigs.length})
           </button>
+        </div>
+      </div>
+
+      {/* 3 Modular Cards (Matching "dashboard estilo rodo.jpg" YouTube/Instagram/Facebook style) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Card 1: Obras */}
+        <div 
+          onClick={() => onNavigateTo('obras')}
+          className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group"
+        >
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
+              <Building className="w-4 h-4 text-red-600" />
+              Obras & Proyectos
+            </span>
+            <span className="text-slate-300 group-hover:text-red-600 transition-colors">···</span>
+          </div>
+
+          <div className="py-6 text-center">
+            <span className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight block font-mono-numbers">
+              {projects.length}
+            </span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1 block">
+              Obras Registradas
+            </span>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[10px]">
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">PLANIF.</span>
+              <strong className="text-slate-800 text-xs font-mono">{projects.filter(p => p.status === 'Planificada').length}</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">EN CURSO</span>
+              <strong className="text-red-700 text-xs font-mono">{projects.filter(p => p.status === 'En curso').length}</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">FINALIZ.</span>
+              <strong className="text-emerald-700 text-xs font-mono">{projects.filter(p => p.status === 'Terminada').length}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Pañol & Inventario */}
+        <div 
+          onClick={() => onNavigateTo('inventario')}
+          className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group"
+        >
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <Truck className="w-4 h-4 text-slate-600" />
+              Pañol & Inventario
+            </span>
+            <span className="text-slate-300 group-hover:text-slate-700 transition-colors">···</span>
+          </div>
+
+          <div className="py-6 text-center">
+            <span className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight block font-mono-numbers">
+              0
+            </span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1 block">
+              Herramientas & Insumos
+            </span>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[10px]">
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">EN PAÑOL</span>
+              <strong className="text-slate-800 text-xs font-mono">0</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">EN OBRA</span>
+              <strong className="text-slate-800 text-xs font-mono">0</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">MANTEN.</span>
+              <strong className="text-slate-800 text-xs font-mono">0</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Calculadoras CIRSOC */}
+        <div 
+          onClick={() => onNavigateTo('calculos')}
+          className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group border-t-4 border-t-red-600"
+        >
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4 text-red-600" />
+              Cálculos Estructurales
+            </span>
+            <span className="text-slate-300 group-hover:text-red-600 transition-colors">···</span>
+          </div>
+
+          <div className="py-6 text-center">
+            <span className="text-4xl md:text-5xl font-black text-red-700 tracking-tight block font-mono-numbers">
+              13
+            </span>
+            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mt-1 block">
+              Calculadoras CIRSOC / INTI
+            </span>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-[10px]">
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">STEEL FRAME</span>
+              <strong className="text-slate-800 text-xs font-mono">5</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">FUNDACIONES</span>
+              <strong className="text-slate-800 text-xs font-mono">4</strong>
+            </div>
+            <div>
+              <span className="text-slate-400 block font-bold uppercase">CARGAS</span>
+              <strong className="text-slate-800 text-xs font-mono">4</strong>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -400,6 +533,72 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </motion.div>
           );
         })}
+      </div>
+
+      {/* SECCIÓN INTERACTIVA: 13 CALCULADORAS ESTRUCTURALES CIRSOC / EDICI EN EL DASHBOARD */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 md:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800 flex items-center gap-1.5">
+                <Calculator className="w-3.5 h-3.5" />
+                13 Calculadoras Online
+              </span>
+              <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+                · Basado en Normativa CIRSOC, INTI e IRAM Argentina
+              </span>
+            </div>
+            <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">
+              Suite de Cálculos Estructurales & Steel Frame
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Acceso rápido desde el dashboard para predimensionado de vigas, columnas, montantes, fundaciones y solicitaciones de viento, sismo, nieve y fuego.
+            </p>
+          </div>
+
+          <button
+            onClick={() => onNavigateTo('calculos')}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#9a1417] hover:bg-[#830e11] rounded-xl transition-all shadow-sm shrink-0 self-start sm:self-auto"
+          >
+            <span>Abrir Suite Completa</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* 13 Calculator Grid in Dashboard */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+          {CALCULATORS_LIST.map(calc => (
+            <div
+              key={calc.id}
+              onClick={() => onNavigateTo('calculos', calc.id)}
+              className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:border-red-300 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${calc.badgeColor}`}>
+                    {calc.category}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 truncate">
+                    {calc.norma.split('/')[0]}
+                  </span>
+                </div>
+                <h3 className="text-xs font-bold text-slate-900 group-hover:text-red-700 transition-colors">
+                  {calc.name}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                  {calc.desc}
+                </p>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                <span className="font-bold text-red-700 group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1">
+                  Calcular ahora <ArrowRight className="w-3 h-3" />
+                </span>
+                <span className="text-slate-400 text-[10px]">CIRSOC</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* MODAL: CUSTOMIZE WIDGETS */}

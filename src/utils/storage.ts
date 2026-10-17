@@ -7,7 +7,9 @@ import {
   InventoryToolItem,
   InventorySupplyItem,
   CostItem,
-  StaffMember
+  StaffMember,
+  ChatMessage,
+  ChatChannel
 } from '../types';
 import { 
   INITIAL_USERS, 
@@ -19,20 +21,24 @@ import {
   INITIAL_INVENTORY_TOOLS,
   INITIAL_INVENTORY_SUPPLIES,
   INITIAL_COSTS,
-  INITIAL_STAFF
+  INITIAL_STAFF,
+  INITIAL_CHAT_CHANNELS,
+  INITIAL_CHAT_MESSAGES
 } from './mockData';
 
 const STORAGE_KEYS = {
   USERS: 'hogacor_users_v4',
   CURRENT_USER_ID: 'hogacor_current_user_id_v4',
-  PROJECTS: 'hogacor_projects_v2',
-  LOGS: 'hogacor_logs_v2',
-  NOTIFICATIONS: 'hogacor_notifications_v2',
+  PROJECTS: 'hogacor_projects_clean_v3',
+  LOGS: 'hogacor_logs_clean_v3',
+  NOTIFICATIONS: 'hogacor_notifications_clean_v3',
   WIDGETS: 'hogacor_widgets_v2',
-  INVENTORY_TOOLS: 'hogacor_inv_tools_v1',
-  INVENTORY_SUPPLIES: 'hogacor_inv_supplies_v1',
-  COSTS: 'hogacor_costs_v1',
-  STAFF: 'hogacor_staff_v1',
+  INVENTORY_TOOLS: 'hogacor_inv_tools_clean_v3',
+  INVENTORY_SUPPLIES: 'hogacor_inv_supplies_clean_v3',
+  COSTS: 'hogacor_costs_clean_v3',
+  STAFF: 'hogacor_staff_clean_v3',
+  CHAT_CHANNELS: 'hogacor_chat_channels_clean_v3',
+  CHAT_MESSAGES: 'hogacor_chat_messages_clean_v3',
 };
 
 export const getStoredUsers = (): User[] => {
@@ -48,12 +54,15 @@ export const getStoredUsers = (): User[] => {
             ...(u.permissions || {}),
           };
 
-          // Guarantee costos and inventario permissions exist
+          // Guarantee costos, inventario and calculos permissions exist
           if (!mergedPerms.costos) {
             mergedPerms.costos = roleDefaults.costos ? { ...roleDefaults.costos } : { canAccess: true, canEdit: true, canDelete: true };
           }
           if (!mergedPerms.inventario) {
             mergedPerms.inventario = roleDefaults.inventario ? { ...roleDefaults.inventario } : { canAccess: true, canEdit: true, canDelete: true };
+          }
+          if (!mergedPerms.calculos) {
+            mergedPerms.calculos = { canAccess: true, canEdit: true, canDelete: true };
           }
 
           // Super admin always has full permissions on all modules without exception
@@ -68,6 +77,7 @@ export const getStoredUsers = (): User[] => {
             mergedPerms.planos = { canAccess: true, canEdit: true, canDelete: true };
             mergedPerms.reportes = { canAccess: true, canEdit: true, canDelete: true };
             mergedPerms.admin = { canAccess: true, canEdit: true, canDelete: true };
+            mergedPerms.calculos = { canAccess: true, canEdit: true, canDelete: true };
           }
 
           return {
@@ -113,7 +123,12 @@ export const saveCurrentUserId = (id: string): void => {
 export const getStoredProjects = (): Project[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed: Project[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error('Error loading projects from storage', e);
   }
@@ -131,7 +146,10 @@ export const saveStoredProjects = (projects: Project[]): void => {
 export const getStoredLogs = (): ActivityLog[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.LOGS);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading logs from storage', e);
   }
@@ -149,7 +167,10 @@ export const saveStoredLogs = (logs: ActivityLog[]): void => {
 export const getStoredNotifications = (): SystemNotification[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading notifications from storage', e);
   }
@@ -189,7 +210,12 @@ export const saveStoredWidgets = (userId: string, configs: WidgetConfig[]): void
 export const getStoredInventoryTools = (): InventoryToolItem[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.INVENTORY_TOOLS);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed: InventoryToolItem[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error('Error loading inventory tools', e);
   }
@@ -208,7 +234,10 @@ export const saveStoredInventoryTools = (items: InventoryToolItem[]): void => {
 export const getStoredInventorySupplies = (): InventorySupplyItem[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.INVENTORY_SUPPLIES);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading inventory supplies', e);
   }
@@ -227,7 +256,10 @@ export const saveStoredInventorySupplies = (items: InventorySupplyItem[]): void 
 export const getStoredCosts = (): CostItem[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.COSTS);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading costs', e);
   }
@@ -246,7 +278,10 @@ export const saveStoredCosts = (items: CostItem[]): void => {
 export const getStoredStaff = (): StaffMember[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.STAFF);
-    if (raw) return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
     console.error('Error loading staff', e);
   }
@@ -258,6 +293,49 @@ export const saveStoredStaff = (items: StaffMember[]): void => {
     localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(items));
   } catch (e) {
     console.error('Error saving staff', e);
+  }
+};
+
+// CHAT CHANNELS & MESSAGES
+export const getStoredChatChannels = (): ChatChannel[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CHAT_CHANNELS);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('Error loading chat channels', e);
+  }
+  return INITIAL_CHAT_CHANNELS;
+};
+
+export const saveStoredChatChannels = (channels: ChatChannel[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CHAT_CHANNELS, JSON.stringify(channels));
+  } catch (e) {
+    console.error('Error saving chat channels', e);
+  }
+};
+
+export const getStoredChatMessages = (): ChatMessage[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CHAT_MESSAGES);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('Error loading chat messages', e);
+  }
+  return INITIAL_CHAT_MESSAGES;
+};
+
+export const saveStoredChatMessages = (messages: ChatMessage[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.CHAT_MESSAGES, JSON.stringify(messages));
+  } catch (e) {
+    console.error('Error saving chat messages', e);
   }
 };
 
@@ -336,3 +414,101 @@ export const calculateProjectStats = (p: Project): ProjectCalculatedStats => {
     categoryBreakdown,
   };
 };
+
+// SERVER PERSISTENCE SYNC
+export interface ServerAppState {
+  users?: User[];
+  projects?: Project[];
+  logs?: ActivityLog[];
+  tools?: InventoryToolItem[];
+  supplies?: InventorySupplyItem[];
+  costs?: CostItem[];
+  staff?: StaffMember[];
+  notifications?: SystemNotification[];
+  chatMessages?: ChatMessage[];
+  chatChannels?: ChatChannel[];
+}
+
+export const fetchServerAppState = async (): Promise<ServerAppState | null> => {
+  try {
+    const res = await fetch('/api/state');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && json.data) {
+        return json.data;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not connect to server state endpoint:', err);
+  }
+  return null;
+};
+
+export const saveServerAppState = async (state: ServerAppState): Promise<boolean> => {
+  try {
+    const res = await fetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Error saving state to server:', err);
+    return false;
+  }
+};
+
+// BACKUP & RECOVERY MECHANISM
+export interface BackupDataPayload {
+  appName: string;
+  version: string;
+  exportDate: string;
+  exportedBy: string;
+  data: {
+    users: User[];
+    projects: Project[];
+    logs: ActivityLog[];
+    tools?: InventoryToolItem[];
+    supplies?: InventorySupplyItem[];
+    costs?: CostItem[];
+    staff?: StaffMember[];
+    notifications?: SystemNotification[];
+  };
+}
+
+export const exportAppStateBackup = (
+  state: {
+    users: User[];
+    projects: Project[];
+    logs: ActivityLog[];
+    tools?: InventoryToolItem[];
+    supplies?: InventorySupplyItem[];
+    costs?: CostItem[];
+    staff?: StaffMember[];
+    notifications?: SystemNotification[];
+  },
+  authorName: string
+): void => {
+  const payload: BackupDataPayload = {
+    appName: 'HOGACOR Suite - Ingeniería & Construcción',
+    version: '2.0',
+    exportDate: new Date().toISOString(),
+    exportedBy: authorName,
+    data: state,
+  };
+
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const d = new Date();
+  const dateStr = d.toISOString().slice(0, 10);
+  const timeStr = `${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+  link.setAttribute('href', url);
+  link.setAttribute('download', `HOGACOR_Backup_Data_${dateStr}_${timeStr}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+

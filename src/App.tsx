@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   getStoredUsers, 
   saveStoredUsers, 
@@ -19,7 +19,12 @@ import {
   getStoredCosts,
   saveStoredCosts,
   getStoredStaff,
-  saveStoredStaff
+  saveStoredStaff,
+  getStoredChatMessages,
+  saveStoredChatMessages,
+  fetchServerAppState,
+  saveServerAppState,
+  BackupDataPayload
 } from './utils/storage';
 import { 
   User, 
@@ -31,7 +36,8 @@ import {
   InventoryToolItem,
   InventorySupplyItem,
   CostItem,
-  StaffMember
+  StaffMember,
+  ChatMessage
 } from './types';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
@@ -41,7 +47,10 @@ import { ReportsView } from './components/ReportsView';
 import { InventoryView } from './components/InventoryView';
 import { CostsView } from './components/CostsView';
 import { StaffView } from './components/StaffView';
+import { MessengerView } from './components/MessengerView';
+import { CalculatorsView, CalculatorCategory } from './components/CalculatorsView';
 import { AuthModal } from './components/AuthModal';
+import { BackupModal } from './components/BackupModal';
 import { NotificationToast } from './components/NotificationToast';
 import { LoginScreen } from './components/LoginScreen';
 
@@ -57,6 +66,7 @@ export default function App() {
   const [supplies, setSupplies] = useState<InventorySupplyItem[]>(getStoredInventorySupplies);
   const [costs, setCosts] = useState<CostItem[]>(getStoredCosts);
   const [staff, setStaff] = useState<StaffMember[]>(getStoredStaff);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(getStoredChatMessages);
   
   const currentUser = users.find(u => u.id === currentUserId) || users[0];
   const [widgetConfigs, setWidgetConfigs] = useState<WidgetConfig[]>(() => getStoredWidgets(currentUser.id));
@@ -72,8 +82,68 @@ export default function App() {
 
   const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
+  const [selectedCalcCategory, setSelectedCalcCategory] = useState<CalculatorCategory>('entrepiso');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const hasInitialLoaded = useRef(false);
+
+  // Initial Server State Hydration (persists across different browsers & devices)
+  useEffect(() => {
+    fetchServerAppState().then(serverData => {
+      if (serverData) {
+        if (Array.isArray(serverData.users) && serverData.users.length > 0) {
+          setUsers(serverData.users);
+        }
+        if (Array.isArray(serverData.projects)) {
+          setProjects(serverData.projects);
+        }
+        if (Array.isArray(serverData.tools)) {
+          setTools(serverData.tools);
+        }
+        if (Array.isArray(serverData.supplies)) {
+          setSupplies(serverData.supplies);
+        }
+        if (Array.isArray(serverData.costs)) {
+          setCosts(serverData.costs);
+        }
+        if (Array.isArray(serverData.staff)) {
+          setStaff(serverData.staff);
+        }
+        if (Array.isArray(serverData.logs)) {
+          setLogs(serverData.logs);
+        }
+        if (Array.isArray(serverData.notifications)) {
+          setNotifications(serverData.notifications);
+        }
+        if (Array.isArray(serverData.chatMessages)) {
+          setChatMessages(serverData.chatMessages);
+        }
+      }
+      hasInitialLoaded.current = true;
+    });
+  }, []);
+
+  // Server Auto-Sync: saves to server disk whenever projects, users, or data is updated/deleted
+  useEffect(() => {
+    if (!hasInitialLoaded.current) return;
+
+    const timer = setTimeout(() => {
+      saveServerAppState({
+        users,
+        projects,
+        logs,
+        notifications,
+        tools,
+        supplies,
+        costs,
+        staff,
+        chatMessages,
+      });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [users, projects, logs, notifications, tools, supplies, costs, staff, chatMessages]);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -112,6 +182,10 @@ export default function App() {
   useEffect(() => {
     saveStoredStaff(staff);
   }, [staff]);
+
+  useEffect(() => {
+    saveStoredChatMessages(chatMessages);
+  }, [chatMessages]);
 
   // Log activity helper
   const addActivityLog = (
@@ -265,8 +339,12 @@ export default function App() {
   const handleDeleteProject = (id: string) => {
     const target = projects.find(p => p.id === id);
     setProjects(prev => prev.filter(p => p.id !== id));
+    if (selectedProjectId === id) {
+      setSelectedProjectId(undefined);
+    }
     if (target) {
       addActivityLog('Eliminación de Obra', 'obras', `Se eliminó el proyecto ${target.name}`, 'warning');
+      triggerNotification('Obra Eliminada', `Se eliminó exitosamente la obra "${target.name}".`, 'warning', 'obras');
     }
   };
 
@@ -291,11 +369,52 @@ export default function App() {
     addActivityLog('Actualización de Personal', 'personal', 'Se actualizó la nómina de colaboradores y legajos digitales', 'info');
   };
 
+  // Messaging Handler
+  const handleSendMessage = (msg: ChatMessage) => {
+    setChatMessages(prev => [...prev, msg]);
+    if (msg.recipientId) {
+      const recipient = users.find(u => u.id === msg.recipientId);
+      if (recipient) {
+        addActivityLog('Envío de Mensaje', 'admin', `Mensaje enviado a ${recipient.name}: "${msg.content.slice(0, 35)}..."`, 'info');
+        triggerNotification(`Mensaje de ${currentUser.name}`, `${currentUser.name} (${currentUser.roleTitle}): "${msg.content.slice(0, 45)}..."`, 'info', 'admin');
+      }
+    } else if (msg.channelId === 'chan-general') {
+      addActivityLog('Comunicado General', 'admin', `Comunicado general enviado por ${currentUser.name}`, 'info');
+      triggerNotification('Comunicado General', `${currentUser.name}: "${msg.content.slice(0, 45)}..."`, 'info', 'admin');
+    }
+  };
+
   // Widgets update handler
   const handleUpdateWidgetConfigs = (configs: WidgetConfig[]) => {
     setWidgetConfigs(configs);
     saveStoredWidgets(currentUser.id, configs);
     addActivityLog('Personalización de Dashboard', 'dashboard', 'Reorganizó los widgets y métricas de pantalla', 'info');
+  };
+
+  // Backup Restore Handler
+  const handleRestoreBackup = (backupData: BackupDataPayload['data']) => {
+    if (Array.isArray(backupData.projects)) setProjects(backupData.projects);
+    if (Array.isArray(backupData.users) && backupData.users.length > 0) setUsers(backupData.users);
+    if (Array.isArray(backupData.logs)) setLogs(backupData.logs);
+    if (Array.isArray(backupData.tools)) setTools(backupData.tools);
+    if (Array.isArray(backupData.supplies)) setSupplies(backupData.supplies);
+    if (Array.isArray(backupData.costs)) setCosts(backupData.costs);
+    if (Array.isArray(backupData.staff)) setStaff(backupData.staff);
+    if (Array.isArray(backupData.notifications)) setNotifications(backupData.notifications);
+
+    saveServerAppState({
+      projects: backupData.projects,
+      users: backupData.users,
+      logs: backupData.logs,
+      tools: backupData.tools,
+      supplies: backupData.supplies,
+      costs: backupData.costs,
+      staff: backupData.staff,
+      notifications: backupData.notifications,
+    });
+
+    addActivityLog('Restauración de Copia de Seguridad', 'dashboard', 'Se restauró la base de datos completa desde archivo JSON', 'warning');
+    triggerNotification('Base de Datos Recuperada', 'Se restauraron los datos correctamente desde la copia de seguridad.', 'success', 'dashboard');
   };
 
   const handleLoginSuccess = (userId: string) => {
@@ -319,10 +438,12 @@ export default function App() {
     addActivityLog('Cierre de Sesión', 'admin', `El usuario ${currentUser.name} cerró su sesión`, 'info');
   };
 
-  const handleNavigateTo = (module: string, projectId?: string) => {
+  const handleNavigateTo = (module: string, subId?: string) => {
     setActiveNav(module);
-    if (projectId) {
-      setSelectedProjectId(projectId);
+    if (module === 'obras' && subId) {
+      setSelectedProjectId(subId);
+    } else if (module === 'calculos' && subId) {
+      setSelectedCalcCategory(subId as CalculatorCategory);
     }
   };
 
@@ -358,6 +479,7 @@ export default function App() {
         onSimulateEvent={simulateCriticalEvent}
         isMobileMenuOpen={isMobileMenuOpen}
         onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        onOpenBackupModal={() => setIsBackupModalOpen(true)}
       />
 
       {/* Main Workspace Viewport */}
@@ -372,6 +494,7 @@ export default function App() {
             onUpdateWidgetConfigs={handleUpdateWidgetConfigs}
             onNavigateTo={handleNavigateTo}
             onSimulateEvent={simulateCriticalEvent}
+            onOpenBackupModal={() => setIsBackupModalOpen(true)}
           />
         )}
 
@@ -412,12 +535,31 @@ export default function App() {
           />
         )}
 
+        {activeNav === 'calculos' && (
+          <CalculatorsView
+            currentUser={currentUser}
+            projects={projects}
+            initialCalculator={selectedCalcCategory}
+          />
+        )}
+
         {activeNav === 'reportes' && (
           <ReportsView
             currentUser={currentUser}
             projects={projects}
             logs={logs}
             users={users}
+          />
+        )}
+
+        {activeNav === 'mensajes' && (
+          <MessengerView
+            currentUser={currentUser}
+            users={users}
+            projects={projects}
+            chatMessages={chatMessages}
+            onSendMessage={handleSendMessage}
+            onNavigate={handleNavigateTo}
           />
         )}
 
@@ -433,6 +575,22 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Backup & Recovery Modal */}
+      <BackupModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        currentUser={currentUser}
+        projects={projects}
+        users={users}
+        logs={logs}
+        tools={tools}
+        supplies={supplies}
+        costs={costs}
+        staff={staff}
+        onRestoreBackup={handleRestoreBackup}
+        onShowNotification={(title, message, severity) => triggerNotification(title, message, severity, 'dashboard')}
+      />
 
       {/* Auth & Profile Switcher Modal */}
       <AuthModal

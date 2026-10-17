@@ -15,7 +15,8 @@ export type ModuleKey =
   | 'reportes' 
   | 'admin'
   | 'inventario'
-  | 'costos';
+  | 'costos'
+  | 'calculos';
 
 export interface ModulePermission {
   canAccess: boolean;
@@ -229,4 +230,46 @@ export interface StaffMember {
   archivos: StaffAttachedFile[];
   activo: boolean;
   createdAt: string;
+}
+
+// MENSAJERÍA Y ASISTENTE IA
+export interface AIActionExecution {
+  type: 'ADD_TOOLS_AND_STAFF' | 'ADD_TOOL_PROJECT' | 'ADD_STAFF_PROJECT' | 'UPDATE_STAGE' | 'ADD_COST' | 'ADD_INVENTORY_TOOL' | 'ADD_INVENTORY_SUPPLY' | 'QUERY_INFO';
+  projectName?: string;
+  projectId?: string;
+  toolsAdded?: { name: string; quantity: number; source?: string }[];
+  staffAdded?: { role: string; count: number; name?: string }[];
+  stageUpdated?: { stageName: string; pct: number };
+  costAdded?: { category: string; concept: string; amount: number; company: string };
+  status: 'executed' | 'denied' | 'error';
+  reason?: string;
+  summary: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRoleTitle?: string;
+  recipientId?: string; // Para mensajes directos 1 a 1
+  channelId?: string;   // Para canales grupales o IA
+  content: string;
+  timestamp: string;
+  status?: 'sent' | 'delivered' | 'read';
+  isAi?: boolean;
+  priority?: 'normal' | 'importante' | 'urgente';
+  projectName?: string;
+  actionExecution?: AIActionExecution;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  type: 'direct' | 'group' | 'ai';
+  description?: string;
+  avatarIcon?: string;
+  participants?: string[];
+  unreadCount?: number;
+  lastMessage?: string;
+  lastMessageTime?: string;
 }
